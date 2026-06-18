@@ -1,0 +1,60 @@
+version: 2
+
+sources:
+  - name: raw
+    schema: raw
+    description: "Bronze layer — append-only Debezium-style CDC events landed by the loader."
+    tables:
+      - name: raw_orders_cdc
+        description: "Raw order change events (c/u/d). Deduped on event_id at load."
+        columns:
+          - name: event_id
+            tests: [not_null, unique]
+      - name: raw_customers_cdc
+        description: "Raw customer change events."
+        columns:
+          - name: event_id
+            tests: [not_null, unique]
+
+models:
+  - name: stg_orders
+    description: "Current state of orders, reconstructed from the CDC log."
+    columns:
+      - name: order_id
+        description: "Primary key."
+        tests: [not_null, unique]
+      - name: customer_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_customers')
+              field: customer_id
+      - name: status
+        tests:
+          - not_null
+          - accepted_values:
+              values: [pending, confirmed, shipped, delivered, cancelled, refunded]
+      - name: amount
+        description: "try_cast handles the string/number type drift; nulls = un-castable."
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+              config:
+                severity: warn   # surface bad amounts without failing the build
+
+  - name: stg_customers
+    description: "Current state of customers."
+    columns:
+      - name: customer_id
+        tests: [not_null, unique]
+      - name: email
+        description: "Null-flood injected upstream; tracked as a warn-level DQ signal."
+        tests:
+          - not_null:
+              config:
+                severity: warn
+      - name: tier
+        tests:
+          - accepted_values:
+              values: [bronze, silver, gold, platinum]

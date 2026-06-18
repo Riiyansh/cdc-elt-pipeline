@@ -1,0 +1,15 @@
+cdc_elt:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('DUCKDB_PATH', '../warehouse.duckdb') }}"
+      threads: 4
+      extensions:
+        - json
+    ci:
+      type: duckdb
+      path: "warehouse.duckdb"
+      threads: 4
+      extensions:
+        - json

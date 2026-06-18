@@ -1,0 +1,4 @@
+duckdb>=0.10
+streamlit>=1.35
+pandas>=2.0
+dbt-duckdb>=1.9,<2.0

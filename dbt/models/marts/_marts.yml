@@ -1,0 +1,39 @@
+version: 2
+
+models:
+  - name: fct_orders
+    description: "Incremental order fact. One row per order (current state)."
+    columns:
+      - name: order_id
+        tests: [not_null, unique]
+      - name: amount
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+              config:
+                severity: warn
+      - name: status
+        tests:
+          - accepted_values:
+              values: [pending, confirmed, shipped, delivered, cancelled, refunded]
+
+  - name: dim_customers
+    description: "Customer dimension with lifetime rollups."
+    columns:
+      - name: customer_id
+        tests: [not_null, unique]
+      - name: lifetime_gmv
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+
+  - name: agg_daily_revenue
+    description: "Daily GMV / orders / cancellation-rate by country (serving layer)."
+    columns:
+      - name: cancellation_rate_pct
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100

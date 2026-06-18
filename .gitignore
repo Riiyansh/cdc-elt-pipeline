@@ -1,0 +1,14 @@
+warehouse.duckdb
+raw_events/
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
+logs/
+__pycache__/
+*.pyc
+.env
+standalone_admin_password.txt
+airflow.cfg
+airflow.db
+webserver_config.py
+dbt/.user.yml

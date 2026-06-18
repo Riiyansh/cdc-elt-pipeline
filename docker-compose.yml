@@ -1,0 +1,27 @@
+# Local Airflow to run the CDC → ELT DAG.
+#   docker compose up
+#   open http://localhost:8080  (user: admin, pass printed in logs / standalone_admin_password.txt)
+#
+# dbt-duckdb + duckdb are installed into the Airflow image at boot via
+# _PIP_ADDITIONAL_REQUIREMENTS. The whole project is mounted at /opt/airflow/project
+# so the DAG can call the loader, dbt, and share the warehouse.duckdb file.
+
+services:
+  airflow:
+    image: apache/airflow:2.9.3-python3.11
+    environment:
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "True"
+      _PIP_ADDITIONAL_REQUIREMENTS: "dbt-duckdb==1.9.* duckdb"
+      DUCKDB_PATH: "/opt/airflow/project/warehouse.duckdb"
+      # SLACK_WEBHOOK_URL: ""   # set to enable failure alerts
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./dbt:/opt/airflow/project/dbt
+      - ./ingestion:/opt/airflow/project/ingestion
+      - ./generator:/opt/airflow/project/generator
+      - ./raw_events:/opt/airflow/project/raw_events
+      - ./warehouse.duckdb:/opt/airflow/project/warehouse.duckdb
+    ports:
+      - "8080:8080"
+    command: standalone

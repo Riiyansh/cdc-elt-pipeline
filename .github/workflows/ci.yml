@@ -1,0 +1,47 @@
+name: CI — build & data-quality gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  elt-build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install --quiet duckdb dbt-duckdb sqlfluff
+
+      - name: Generate CDC events (seeded, deterministic)
+        run: python generator/cdc_generator.py --events 5000 --seed 42 --out raw_events
+
+      - name: Land raw events (idempotent)
+        run: python ingestion/load_raw.py --db warehouse.duckdb --events-dir raw_events
+
+      - name: Lint SQL (sqlfluff)
+        working-directory: dbt
+        run: sqlfluff lint models --dialect duckdb || true   # advisory
+
+      - name: dbt deps
+        working-directory: dbt
+        run: dbt deps
+
+      - name: dbt build (run + snapshot + DATA-QUALITY GATE)
+        working-directory: dbt
+        env:
+          DUCKDB_PATH: ../warehouse.duckdb
+        run: dbt build --profiles-dir .
+
+      - name: Verify idempotency (re-run loads zero new rows)
+        run: |
+          python ingestion/load_raw.py --db warehouse.duckdb --events-dir raw_events \
+            | tee /tmp/rerun.log
+          grep -q "0 new rows" /tmp/rerun.log && echo "✅ idempotent" || (echo "❌ not idempotent" && exit 1)
