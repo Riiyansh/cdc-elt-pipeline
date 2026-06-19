@@ -1,4 +1,6 @@
-duckdb>=0.10
+# Runtime deps for the deployed dashboard only.
+# dbt is NOT needed at runtime — the warehouse is pre-built and committed.
+# (dbt-duckdb is used in local dev / CI, where Python 3.11 is available.)
+duckdb==1.5.4
 streamlit>=1.35
 pandas>=2.0
-dbt-duckdb>=1.9,<2.0

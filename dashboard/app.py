@@ -8,8 +8,6 @@ from the committed, deterministic CDC events: generate → load → dbt build.
 """
 
 import os
-import sys
-import subprocess
 import duckdb
 import pandas as pd
 import streamlit as st
@@ -19,32 +17,18 @@ st.set_page_config(page_title="CDC ELT Pipeline", page_icon="📊", layout="wide
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB = os.path.join(ROOT, "warehouse.duckdb")
 
-
-def bootstrap():
-    """Build the warehouse from scratch if it doesn't exist yet."""
-    env = {**os.environ, "DUCKDB_PATH": DB}
-    py = sys.executable  # use the same interpreter Streamlit runs on
-    subprocess.run([py, "generator/cdc_generator.py", "--events", "5000",
-                    "--seed", "42", "--out", "raw_events"], cwd=ROOT, check=True)
-    subprocess.run([py, "ingestion/load_raw.py", "--db", DB,
-                    "--events-dir", "raw_events"], cwd=ROOT, check=True)
-    subprocess.run([py, "-m", "dbt.cli.main", "deps", "--profiles-dir", "."],
-                   cwd=f"{ROOT}/dbt", check=True, env=env)
-    subprocess.run([py, "-m", "dbt.cli.main", "build", "--profiles-dir", "."],
-                   cwd=f"{ROOT}/dbt", check=True, env=env)
-
-
+# The warehouse is pre-built (by dbt, in CI/local) and committed to the repo,
+# so the deployed dashboard needs nothing but DuckDB to read it — no dbt at runtime.
 if not os.path.exists(DB):
-    with st.spinner("First run — building the warehouse (generate → load → dbt build)..."):
-        try:
-            bootstrap()
-        except Exception as e:
-            st.error(f"Bootstrap failed: {e}")
-            st.stop()
+    st.error("warehouse.duckdb not found. Run the pipeline first: "
+             "`python generator/cdc_generator.py && python ingestion/load_raw.py "
+             "&& cd dbt && dbt build`")
+    st.stop()
 
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=300)
 def q(sql: str) -> pd.DataFrame:
+    # Open a fresh read-only connection per query (Streamlit reruns are concurrent).
     con = duckdb.connect(DB, read_only=True)
     try:
         return con.execute(sql).fetchdf()
