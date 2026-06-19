@@ -8,6 +8,7 @@ from the committed, deterministic CDC events: generate → load → dbt build.
 """
 
 import os
+import sys
 import subprocess
 import duckdb
 import pandas as pd
@@ -22,12 +23,15 @@ DB = os.path.join(ROOT, "warehouse.duckdb")
 def bootstrap():
     """Build the warehouse from scratch if it doesn't exist yet."""
     env = {**os.environ, "DUCKDB_PATH": DB}
-    subprocess.run(["python", "generator/cdc_generator.py", "--events", "5000",
+    py = sys.executable  # use the same interpreter Streamlit runs on
+    subprocess.run([py, "generator/cdc_generator.py", "--events", "5000",
                     "--seed", "42", "--out", "raw_events"], cwd=ROOT, check=True)
-    subprocess.run(["python", "ingestion/load_raw.py", "--db", DB,
+    subprocess.run([py, "ingestion/load_raw.py", "--db", DB,
                     "--events-dir", "raw_events"], cwd=ROOT, check=True)
-    subprocess.run(["dbt", "deps", "--profiles-dir", "."], cwd=f"{ROOT}/dbt", check=True, env=env)
-    subprocess.run(["dbt", "build", "--profiles-dir", "."], cwd=f"{ROOT}/dbt", check=True, env=env)
+    subprocess.run([py, "-m", "dbt.cli.main", "deps", "--profiles-dir", "."],
+                   cwd=f"{ROOT}/dbt", check=True, env=env)
+    subprocess.run([py, "-m", "dbt.cli.main", "build", "--profiles-dir", "."],
+                   cwd=f"{ROOT}/dbt", check=True, env=env)
 
 
 if not os.path.exists(DB):
