@@ -72,9 +72,9 @@ d3.metric("Future-dated orders", int(future), help="Hard DQ gate — must be 0")
 d4.metric("Schema-drift coverage", f"{drift}%", help="Orders carrying the late-added `currency` field")
 
 st.info(
-    f"**Idempotent load:** collapsed "
-    f"{int(raw_orders.c - raw_orders.d) + int(raw_cust.c - raw_cust.d)} redelivered CDC events "
-    f"to a single row each. Raw events landed: {int(raw_orders.c + raw_cust.c):,}."
+    f"**Idempotent load:** {int(raw_orders.c + raw_cust.c):,} unique CDC events landed in the "
+    f"raw layer. Redelivered duplicates are rejected at load via an `event_id` PRIMARY KEY "
+    f"(at-least-once delivery → exactly-once storage)."
 )
 
 # ── Business charts ───────────────────────────────────────────────────────────

@@ -5,7 +5,7 @@ A fault-tolerant, end-to-end ELT pipeline that ingests **Change Data Capture (CD
 The interesting part isn't "used dbt and Airflow." It's everything the pipeline does to survive a **messy, real-world CDC source**: duplicate deliveries, out-of-order events, soft deletes, schema drift, and type inconsistency.
 
 > **CI status:** ![CI](https://github.com/Riiyansh/cdc-elt-pipeline/actions/workflows/ci.yml/badge.svg)
-> **Live dashboard:** deploy to Streamlit Cloud (self-bootstrapping) — see below.
+> **Live dashboard:** https://cdc-elt-pipeline-jsdwebmku4wvpug5zurbzv.streamlit.app
 
 ---
 
